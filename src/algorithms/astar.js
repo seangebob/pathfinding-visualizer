@@ -1,37 +1,55 @@
-// Performs Dijkstra's algorithm; returns *all* nodes in the order
+// Performs A* algorithm; returns *all* nodes in the order
 // in which they were visited. Also makes nodes point back to their
 // previous node, effectively allowing us to compute the shortest path
 // by backtracking from the finish node.
-export function dijkstra(grid, startNode, finishNode) {
+export function astar(grid, startNode, finishNode) {
   const visitedNodesInOrder = [];
   startNode.distance = 0;
-  const unvisitedNodes = getAllNodes(grid);
-  while (!!unvisitedNodes.length) {
-    sortNodesByDistance(unvisitedNodes);
-    const closestNode = unvisitedNodes.shift();
+  startNode.heuristic = manhattanDistance(startNode, finishNode);
+  const openList = getAllNodes(grid);
+
+  while (!!openList.length) {
+    sortNodesByFScore(openList, finishNode);
+    const closestNode = openList.shift();
+
     // If we encounter a wall, we skip it.
     if (closestNode.isWall) continue;
     // If the closest node is at a distance of infinity,
     // we must be trapped and should therefore stop.
     if (closestNode.distance === Infinity) return visitedNodesInOrder;
+
     closestNode.isVisited = true;
     visitedNodesInOrder.push(closestNode);
+
     if (closestNode === finishNode) return visitedNodesInOrder;
-    updateUnvisitedNeighbors(closestNode, grid);
+    updateUnvisitedNeighbors(closestNode, grid, finishNode);
   }
-  // Return visited nodes in case loop exhausts without reaching finishNode
   return visitedNodesInOrder;
 }
 
-function sortNodesByDistance(unvisitedNodes) {
-  unvisitedNodes.sort((nodeA, nodeB) => nodeA.distance - nodeB.distance);
+// f(n) = g(n) + h(n)
+// g(n) = distance from start, h(n) = heuristic (manhattan distance to finish)
+function sortNodesByFScore(openList, finishNode) {
+  openList.sort((nodeA, nodeB) => {
+    const fA = nodeA.distance + manhattanDistance(nodeA, finishNode);
+    const fB = nodeB.distance + manhattanDistance(nodeB, finishNode);
+    return fA - fB;
+  });
 }
 
-function updateUnvisitedNeighbors(node, grid) {
+function manhattanDistance(nodeA, nodeB) {
+  return Math.abs(nodeA.row - nodeB.row) + Math.abs(nodeA.col - nodeB.col);
+}
+
+function updateUnvisitedNeighbors(node, grid, finishNode) {
   const unvisitedNeighbors = getUnvisitedNeighbors(node, grid);
   for (const neighbor of unvisitedNeighbors) {
-    neighbor.distance = node.distance + 1;
-    neighbor.previousNode = node;
+    const tentativeDistance = node.distance + 1;
+    // Only update if we found a shorter path to this neighbor
+    if (tentativeDistance < neighbor.distance) {
+      neighbor.distance = tentativeDistance;
+      neighbor.previousNode = node;
+    }
   }
 }
 
@@ -56,7 +74,7 @@ function getAllNodes(grid) {
 }
 
 // Backtracks from the finishNode to find the shortest path.
-// Only works when called *after* the dijkstra method above.
+// Only works when called *after* the astar method above.
 export function getNodesInShortestPathOrder(finishNode) {
   const nodesInShortestPathOrder = [];
   let currentNode = finishNode;

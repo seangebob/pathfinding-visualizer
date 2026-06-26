@@ -1,7 +1,7 @@
 .node {
     width: 25px;
     height: 25px;
-    outline: 1px solid rgb (175, 216, 248);
+    outline: 1px solid rgb(175, 216, 248);
     display: inline-block;
 }
 
@@ -24,7 +24,7 @@
     animation-play-state: running;
 }
 
-@keyframes visitedAnimiation {
+@keyframes visitedAnimation {
     0% {
         transform: scale(0.3);
         background-color: rgba(0, 0, 66, 0.75);
