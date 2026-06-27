@@ -6,7 +6,9 @@ export function astar(grid, startNode, finishNode) {
   const visitedNodesInOrder = [];
   startNode.distance = 0;
   startNode.heuristic = manhattanDistance(startNode, finishNode);
-  const openList = getAllNodes(grid);
+  // Proper A*: open list starts with only the start node,
+  // not all nodes in the grid
+  const openList = [startNode];
 
   while (!!openList.length) {
     sortNodesByFScore(openList, finishNode);
@@ -22,7 +24,7 @@ export function astar(grid, startNode, finishNode) {
     visitedNodesInOrder.push(closestNode);
 
     if (closestNode === finishNode) return visitedNodesInOrder;
-    updateUnvisitedNeighbors(closestNode, grid, finishNode);
+    updateUnvisitedNeighbors(closestNode, grid, finishNode, openList);
   }
   return visitedNodesInOrder;
 }
@@ -41,7 +43,7 @@ function manhattanDistance(nodeA, nodeB) {
   return Math.abs(nodeA.row - nodeB.row) + Math.abs(nodeA.col - nodeB.col);
 }
 
-function updateUnvisitedNeighbors(node, grid, finishNode) {
+function updateUnvisitedNeighbors(node, grid, finishNode, openList) {
   const unvisitedNeighbors = getUnvisitedNeighbors(node, grid);
   for (const neighbor of unvisitedNeighbors) {
     const tentativeDistance = node.distance + 1;
@@ -49,6 +51,10 @@ function updateUnvisitedNeighbors(node, grid, finishNode) {
     if (tentativeDistance < neighbor.distance) {
       neighbor.distance = tentativeDistance;
       neighbor.previousNode = node;
+      // Add to open list if not already queued
+      if (!openList.includes(neighbor)) {
+        openList.push(neighbor);
+      }
     }
   }
 }
@@ -61,16 +67,6 @@ function getUnvisitedNeighbors(node, grid) {
   if (col > 0) neighbors.push(grid[row][col - 1]);
   if (col < grid[0].length - 1) neighbors.push(grid[row][col + 1]);
   return neighbors.filter(neighbor => !neighbor.isVisited);
-}
-
-function getAllNodes(grid) {
-  const nodes = [];
-  for (const row of grid) {
-    for (const node of row) {
-      nodes.push(node);
-    }
-  }
-  return nodes;
 }
 
 // Backtracks from the finishNode to find the shortest path.
