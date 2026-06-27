@@ -1,6 +1,7 @@
 import React, { Component } from 'react';
 import Node from './Node/Node';
 import { dijkstra, getNodesInShortestPathOrder } from '../algorithms/dijkstra';
+import { astar, getNodesInShortestPathOrder as getAstarNodesInShortestPathOrder } from '../algorithms/astar';
 
 import './PathfindingVisualizer.css';
 
@@ -101,6 +102,21 @@ export default class PathfindingVisualizer extends Component {
     this.animateDijkstra(visitedNodesInOrder, nodesInShortestPathOrder);
   }
 
+  visualizeAstar() {
+    // Prevent running again while an animation is in progress
+    if (this.state.isAnimating) return;
+    this.setState({ isAnimating: true });
+    const { grid } = this.state;
+    // Deep clone the grid so the algorithm can mutate freely
+    // without corrupting React state
+    const gridClone = deepCloneGrid(grid);
+    const startNode = gridClone[START_NODE_ROW][START_NODE_COL];
+    const finishNode = gridClone[FINISH_NODE_ROW][FINISH_NODE_COL];
+    const visitedNodesInOrder = astar(gridClone, startNode, finishNode);
+    const nodesInShortestPathOrder = getAstarNodesInShortestPathOrder(finishNode);
+    this.animateDijkstra(visitedNodesInOrder, nodesInShortestPathOrder);
+  }
+
   clearBoard() {
     // Prevent clearing while animation is running
     if (this.state.isAnimating) return;
@@ -133,6 +149,12 @@ export default class PathfindingVisualizer extends Component {
           disabled={isAnimating}
           style={{ opacity: isAnimating ? 0.5 : 1, cursor: isAnimating ? 'not-allowed' : 'pointer' }}>
           Visualize Dijkstra's Algorithm
+        </button>
+        <button
+          onClick={() => this.visualizeAstar()}
+          disabled={isAnimating}
+          style={{ marginLeft: '10px', opacity: isAnimating ? 0.5 : 1, cursor: isAnimating ? 'not-allowed' : 'pointer' }}>
+          Visualize A* Algorithm
         </button>
         <button
           onClick={() => this.clearBoard()}
