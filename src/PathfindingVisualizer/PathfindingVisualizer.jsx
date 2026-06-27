@@ -2,6 +2,8 @@ import React, { Component } from 'react';
 import Node from './Node/Node';
 import { dijkstra, getNodesInShortestPathOrder } from '../algorithms/dijkstra';
 import { astar, getNodesInShortestPathOrder as getAstarNodesInShortestPathOrder } from '../algorithms/astar';
+import { dfs, getNodesInShortestPathOrder as getDfsNodesInShortestPathOrder } from '../algorithms/depthfirstsearch';
+import { bfs, getNodesInShortestPathOrder as BfsNodesInShortestPathOrder } from '../algorithms/breadthfirstsearch';
 
 import './PathfindingVisualizer.css';
 
@@ -20,11 +22,22 @@ export default class PathfindingVisualizer extends Component {
     };
     // Track all pending timeouts so they can be cleaned up
     this.timeoutIds = [];
+    // Track whether mouse-drag should add or remove walls
+    this.isAddingWalls = true;
   }
 
   componentDidMount() {
     const grid = getInitialGrid();
     this.setState({ grid });
+
+    // If the user releases the mouse anywhere outside the grid (or even
+    // outside the browser window), we need to stop the wall-painting drag.
+    this._handleGlobalMouseUp = () => {
+      if (this.state.mouseIsPressed) {
+        this.setState({ mouseIsPressed: false });
+      }
+    };
+    document.addEventListener('mouseup', this._handleGlobalMouseUp);
   }
 
   componentWillUnmount() {
@@ -32,12 +45,20 @@ export default class PathfindingVisualizer extends Component {
     // setState-on-unmounted-component warnings
     this.timeoutIds.forEach(id => clearTimeout(id));
     this.timeoutIds = [];
+
+    document.removeEventListener('mouseup', this._handleGlobalMouseUp);
   }
 
   handleMouseDown(row, col) {
     // Block interaction while animation is running
     if (this.state.isAnimating) return;
-    const newGrid = getNewGridWithWallToggled(this.state.grid, row, col);
+    const node = this.state.grid[row][col];
+    // Don't allow toggling start or finish nodes
+    if (node.isStart || node.isFinish) return;
+    // Determine drag mode: if the clicked cell is already a wall, we're
+    // removing walls; otherwise we're adding them.
+    this.isAddingWalls = !node.isWall;
+    const newGrid = getNewGridWithWallSet(this.state.grid, row, col, this.isAddingWalls);
     this.setState({ grid: newGrid, mouseIsPressed: true });
   }
 
@@ -45,7 +66,12 @@ export default class PathfindingVisualizer extends Component {
     // Block interaction while animation is running
     if (this.state.isAnimating) return;
     if (!this.state.mouseIsPressed) return;
-    const newGrid = getNewGridWithWallToggled(this.state.grid, row, col);
+    const node = this.state.grid[row][col];
+    // Don't allow toggling start or finish nodes
+    if (node.isStart || node.isFinish) return;
+    // Only change if the node needs to change (avoids unnecessary re-renders)
+    if (node.isWall === this.isAddingWalls) return;
+    const newGrid = getNewGridWithWallSet(this.state.grid, row, col, this.isAddingWalls);
     this.setState({ grid: newGrid });
   }
 
@@ -55,10 +81,36 @@ export default class PathfindingVisualizer extends Component {
     this.setState({ mouseIsPressed: false });
   }
 
-  animateDijkstra(visitedNodesInOrder, nodesInShortestPathOrder) {
+  // Reset only the visual CSS classes (visited / shortest-path) while
+  // keeping walls intact. Called automatically before running any algorithm
+  // so the user doesn't have to manually clear the board.
+  resetVisualization() {
+    const { grid } = this.state;
+    for (let row = 0; row < grid.length; row++) {
+      for (let col = 0; col < grid[row].length; col++) {
+        const node = grid[row][col];
+        const el = document.getElementById(`node-${row}-${col}`);
+        if (el) {
+          if (node.isStart) {
+            el.className = 'node node-start';
+          } else if (node.isFinish) {
+            el.className = 'node node-finish';
+          } else if (node.isWall) {
+            el.className = 'node node-wall';
+          } else {
+            el.className = 'node';
+          }
+        }
+      }
+    }
+  }
+
+  animateAlgorithm(visitedNodesInOrder, nodesInShortestPathOrder) {
     for (let i = 0; i < visitedNodesInOrder.length; i++) {
       const id = setTimeout(() => {
         const node = visitedNodesInOrder[i];
+        // Don't overwrite start/finish colors during visited animation
+        if (node.isStart || node.isFinish) return;
         const el = document.getElementById(`node-${node.row}-${node.col}`);
         if (el) el.className = 'node node-visited';
       }, 10 * i);
@@ -75,6 +127,8 @@ export default class PathfindingVisualizer extends Component {
     for (let i = 0; i < nodesInShortestPathOrder.length; i++) {
       const id = setTimeout(() => {
         const node = nodesInShortestPathOrder[i];
+        // Don't overwrite start/finish colors during path animation
+        if (node.isStart || node.isFinish) return;
         const el = document.getElementById(`node-${node.row}-${node.col}`);
         if (el) el.className = 'node node-shortest-path';
       }, 50 * i);
@@ -87,9 +141,17 @@ export default class PathfindingVisualizer extends Component {
     this.timeoutIds.push(id);
   }
 
-  visualizeDijkstra() {
-    // Prevent running again while an animation is in progress
+  runAlgorithm(algorithmFn, getPathFn) {
+    // Prevent running while an animation is in progress
     if (this.state.isAnimating) return;
+
+    // Cancel any leftover timeouts from a previous run
+    this.timeoutIds.forEach(id => clearTimeout(id));
+    this.timeoutIds = [];
+
+    // Reset visuals from any prior run (keeps walls)
+    this.resetVisualization();
+
     this.setState({ isAnimating: true });
     const { grid } = this.state;
     // Deep clone the grid so the algorithm can mutate freely
@@ -97,24 +159,25 @@ export default class PathfindingVisualizer extends Component {
     const gridClone = deepCloneGrid(grid);
     const startNode = gridClone[START_NODE_ROW][START_NODE_COL];
     const finishNode = gridClone[FINISH_NODE_ROW][FINISH_NODE_COL];
-    const visitedNodesInOrder = dijkstra(gridClone, startNode, finishNode);
-    const nodesInShortestPathOrder = getNodesInShortestPathOrder(finishNode);
-    this.animateDijkstra(visitedNodesInOrder, nodesInShortestPathOrder);
+    const visitedNodesInOrder = algorithmFn(gridClone, startNode, finishNode);
+    const nodesInShortestPathOrder = getPathFn(finishNode);
+    this.animateAlgorithm(visitedNodesInOrder, nodesInShortestPathOrder);
+  }
+
+  visualizeDijkstra() {
+    this.runAlgorithm(dijkstra, getNodesInShortestPathOrder);
   }
 
   visualizeAstar() {
-    // Prevent running again while an animation is in progress
-    if (this.state.isAnimating) return;
-    this.setState({ isAnimating: true });
-    const { grid } = this.state;
-    // Deep clone the grid so the algorithm can mutate freely
-    // without corrupting React state
-    const gridClone = deepCloneGrid(grid);
-    const startNode = gridClone[START_NODE_ROW][START_NODE_COL];
-    const finishNode = gridClone[FINISH_NODE_ROW][FINISH_NODE_COL];
-    const visitedNodesInOrder = astar(gridClone, startNode, finishNode);
-    const nodesInShortestPathOrder = getAstarNodesInShortestPathOrder(finishNode);
-    this.animateDijkstra(visitedNodesInOrder, nodesInShortestPathOrder);
+    this.runAlgorithm(astar, getAstarNodesInShortestPathOrder);
+  }
+
+  visualizeBFS() {
+    this.runAlgorithm(bfs, BfsNodesInShortestPathOrder);
+  }
+
+  visualizeDFS() {
+    this.runAlgorithm(dfs, getDfsNodesInShortestPathOrder);
   }
 
   clearBoard() {
@@ -157,6 +220,18 @@ export default class PathfindingVisualizer extends Component {
           Visualize A* Algorithm
         </button>
         <button
+          onClick={() => this.visualizeDFS()}
+          disabled={isAnimating}
+          style={{ marginLeft: '10px', opacity: isAnimating ? 0.5 : 1, cursor: isAnimating ? 'not-allowed' : 'pointer' }}>
+          Visualize DFS
+        </button>
+        <button
+          onClick={() => this.visualizeBFS()}
+          disabled={isAnimating}
+          style={{ marginLeft: '10px', opacity: isAnimating ? 0.5 : 1, cursor: isAnimating ? 'not-allowed' : 'pointer' }}>
+          Visualize BFS
+        </button>
+        <button
           onClick={() => this.clearBoard()}
           disabled={isAnimating}
           style={{ marginLeft: '10px', opacity: isAnimating ? 0.5 : 1, cursor: isAnimating ? 'not-allowed' : 'pointer' }}>
@@ -194,12 +269,16 @@ export default class PathfindingVisualizer extends Component {
 }
 
 // Deep clone the grid so algorithms can freely mutate node properties
-// (distance, isVisited, previousNode) without corrupting React state objects
+// (distance, isVisited, previousNode) without corrupting React state objects.
+// Also resets all algorithm-specific fields so re-running works correctly.
 const deepCloneGrid = (grid) => {
   return grid.map(row =>
     row.map(node => ({
       ...node,
+      distance: Infinity,
+      isVisited: false,
       previousNode: null,
+      heuristic: 0,
     }))
   );
 };
@@ -226,18 +305,18 @@ const createNode = (col, row) => {
     isVisited: false,
     isWall: false,
     previousNode: null,
+    heuristic: 0,
   };
 };
 
-const getNewGridWithWallToggled = (grid, row, col) => {
-  // Properly clone the affected row so the original state array is not mutated
+// Sets a wall on or off at (row, col). Does NOT toggle — the caller
+// decides whether to add or remove, which prevents flicker during drags.
+const getNewGridWithWallSet = (grid, row, col, isWall) => {
   const newGrid = grid.map((r, rIdx) => (rIdx === row ? r.slice() : r));
   const node = newGrid[row][col];
-  // Do not allow toggling start or finish nodes as walls
-  if (node.isStart || node.isFinish) return grid;
   const newNode = {
     ...node,
-    isWall: !node.isWall,
+    isWall,
   };
   newGrid[row][col] = newNode;
   return newGrid;
