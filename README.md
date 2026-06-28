@@ -1,70 +1,100 @@
-# Getting Started with Create React App
+# Pathfinding Visualizer
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+An interactive, browser-based visualizer for classic pathfinding algorithms built with **React**. Paint walls, pick an algorithm, and watch it explore the grid in real time before tracing the resulting path.
 
-## Available Scripts
+---
 
-In the project directory, you can run:
+## Algorithms
 
-### `npm start`
+| Algorithm | Guarantees Shortest Path | Notes |
+|---|---|---|
+| **Dijkstra's** | Weighted-graph gold standard; explores all directions uniformly |
+| **A\*** | Heuristic-guided (Manhattan distance); typically much faster than Dijkstra's |
+| **BFS** | Explores layer by layer; shortest path on an unweighted grid |
+| **DFS** | Explores as deep as possible first; finds *a* path, not the shortest |
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+---
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## Features
 
-### `npm test`
+- **Interactive wall drawing** — click and drag to paint walls; click an existing wall to erase
+- **Smart drag mode** — dragging never flickers: the first cell you click decides whether you're adding or removing walls for the entire drag
+- **Auto-reset between runs** — re-running an algorithm automatically clears the previous visualization while keeping your walls intact
+- **Start / finish node protection** — the red (start) and green (finish) nodes cannot be turned into walls
+- **Animation lock** — buttons and wall-drawing are disabled while an animation is playing to prevent corrupt state
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+---
 
-### `npm run build`
+## Getting Started
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+### Prerequisites
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+- [Node.js](https://nodejs.org/) v14 or newer
+- npm (bundled with Node.js)
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+### Install & Run
 
-### `npm run eject`
+```bash
+# 1. Clone the repository
+git clone https://github.com/seangebob/pathfinding-visualizer.git
+cd pathfinding-visualizer
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+# 2. Install dependencies
+npm install
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+# 3. Start the development server
+npm start
+```
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+The app will open automatically at [http://localhost:3000](http://localhost:3000).  
+The page hot-reloads whenever you save a source file.
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+### Production Build
 
-## Learn More
+```bash
+npm run build
+```
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+Outputs an optimised static bundle to the `build/` folder, ready to be served by any static host (Vercel, Netlify, GitHub Pages, etc.).
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+---
 
-### Code Splitting
+## How to Use
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+1. **Draw walls** — click or click-and-drag on any empty cell to add a wall; drag over a wall to remove it
+2. **Pick an algorithm** — click one of the algorithm buttons at the top of the page
+3. **Watch the animation** — visited cells turn teal/blue; the final path turns yellow
+4. **Re-run or switch** — clicking another algorithm button automatically clears the previous result and runs the new one on the same grid
+5. **Clear board** — resets the entire grid (walls included) back to a blank state
 
-### Analyzing the Bundle Size
+---
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+## Project Structure
 
-### Making a Progressive Web App
+```
+src/
+├── algorithms/
+│   ├── dijkstra.js          # Dijkstra's algorithm
+│   ├── astar.js             # A* with Manhattan heuristic
+│   ├── breadthfirstsearch.js
+│   └── depthfirstsearch.js
+└── PathfindingVisualizer/
+    ├── PathfindingVisualizer.jsx   # Main grid component & animation logic
+    ├── PathfindingVisualizer.css
+    └── Node/
+        ├── Node.jsx                # Individual cell component
+        └── Node.css                # Node animations & colour states
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+---
 
-### Advanced Configuration
+## Tech Stack
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+- **React 19** (Create React App)
+- Vanilla CSS with keyframe animations — no external UI libraries
 
-### Deployment
+---
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+## License
 
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+MIT
