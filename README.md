@@ -6,7 +6,7 @@ An interactive, browser-based visualizer for classic pathfinding algorithms buil
 
 ## Algorithms
 
-| Algorithm | Guarantees Shortest Path | Notes |
+| Algorithm | Guarantees Shortest Path |
 |---|---|---|
 | **Dijkstra's** | Weighted-graph gold standard; explores all directions uniformly |
 | **A\*** | Heuristic-guided (Manhattan distance); typically much faster than Dijkstra's |
@@ -76,8 +76,8 @@ src/
 ├── algorithms/
 │   ├── dijkstra.js          # Dijkstra's algorithm
 │   ├── astar.js             # A* with Manhattan heuristic
-│   ├── breadthfirstsearch.js
-│   └── depthfirstsearch.js
+│   ├── breadthfirstsearch.js  # Breadth-First Search algorithm
+│   └── depthfirstsearch.js  # Depth-First Search algorithm
 └── PathfindingVisualizer/
     ├── PathfindingVisualizer.jsx   # Main grid component & animation logic
     ├── PathfindingVisualizer.css
